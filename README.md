@@ -256,127 +256,103 @@ Clean < 5
 
 Пример использования:
 
-python
+```python
 signature_manager = SignatureManager("/path/to/data")
 threat = signature_manager.check_hash(file_hash)
 if threat:
     print(f"Найдена угроза: {threat['name']}")
-7.2 LinuxAVScanner (scanner.py)
+```
+### 7.2 LinuxAVScanner (scanner.py)
 Назначение: Ядро сканирования, координация проверок.
 
 Атрибуты:
-
-max_file_size — максимальный размер файла (по умолчанию 50 МБ)
-
-scan_depth — глубина анализа (0=быстрое, 1=обычное, 2=глубокое)
-
-cache_enabled — флаг кэширования (True/False)
-
-trusted_system_dirs — множество доверенных системных директорий
-
-trusted_patterns — список доверенных системных файлов
+- max_file_size — максимальный размер файла (по умолчанию 50 МБ)
+- scan_depth — глубина анализа (0=быстрое, 1=обычное, 2=глубокое)
+- cache_enabled — флаг кэширования (True/False)
+- trusted_system_dirs — множество доверенных системных директорий
+- trusted_patterns — список доверенных системных файлов
 
 Методы:
 
-scan_path(path, scan_type, progress_callback) — сканирование директории
-
-scan_memory() — сканирование оперативной памяти
-
-_scan_file(file_path) — сканирование одного файла
-
-_deep_analyze_linux_file(path, data) — углубленный анализ
-
-_is_trusted_system_file(file_path) — проверка системного файла
-
-_is_safe_script_content(content) — проверка безопасности скрипта
-
-_collect_files(paths, limit) — сбор файлов для сканирования
-
-_calculate_hash(file_path) — вычисление SHA256
+- scan_path(path, scan_type, progress_callback) — сканирование директории
+- scan_memory() — сканирование оперативной памяти
+- _scan_file(file_path) — сканирование одного файла
+- _deep_analyze_linux_file(path, data) — углубленный анализ
+- _is_trusted_system_file(file_path) — проверка системного файла
+- _is_safe_script_content(content) — проверка безопасности скрипта
+- _collect_files(paths, limit) — сбор файлов для сканирования
+- _calculate_hash(file_path) — вычисление SHA256
 
 Пример использования:
 
-python
+```python
 scanner = LinuxAVScanner(signature_manager)
 results = scanner.scan_path("/home/user", scan_type="quick")
 print(f"Найдено угроз: {results['threats_found']}")
-7.3 BinaryAnalyzer (binary_analyzer.py)
+```
+
+### 7.3 BinaryAnalyzer (binary_analyzer.py)
 Назначение: Анализ ELF-файлов с помощью pyelftools.
 
 Атрибуты:
 
-suspicious_symbols — множество подозрительных символов
-
-anti_analysis_indicators — индикаторы анти-отладки
+- suspicious_symbols — множество подозрительных символов
+- anti_analysis_indicators — индикаторы анти-отладки
 
 Методы:
 
-analyze(file_path, file_data) — полный анализ ELF-файла
-
-_extract_features(elf) — извлечение характеристик
-
-_extract_strings(file_path, file_data, min_len) — извлечение строк
-
-_detect_iocs(strings) — обнаружение IOC
-
-_detect_indicators(features, strings) — обнаружение индикаторов
-
-_correlate_behaviors(features, strings) — корреляция поведений
-
-_calculate_score_v2(features, indicators, behaviors, iocs) — расчет score
-
-_determine_threat_level(score) — определение уровня угрозы
+- analyze(file_path, file_data) — полный анализ ELF-файла
+- _extract_features(elf) — извлечение характеристик
+- _extract_strings(file_path, file_data, min_len) — извлечение строк
+- _detect_iocs(strings) — обнаружение IOC
+- _detect_indicators(features, strings) — обнаружение индикаторов
+- _correlate_behaviors(features, strings) — корреляция поведений
+- _calculate_score_v2(features, indicators, behaviors, iocs) — расчет score
+- _determine_threat_level(score) — определение уровня угрозы
 
 Пример использования:
 
-python
+```python
 analyzer = BinaryAnalyzer()
 result = analyzer.analyze("/path/to/executable")
 print(f"Score: {result['score']}, Level: {result['threat_level']}")
-7.4 QuarantineManager (quarantine.py)
+```
+
+### 7.4 QuarantineManager (quarantine.py)
 Назначение: Изолированное хранение угроз.
 
 Атрибуты:
-
-quarantine_dir — директория карантина
-
-metadata_file — файл с метаданными
+- quarantine_dir — директория карантина
+- metadata_file — файл с метаданными
 
 Методы:
-
-quarantine_file(file_path, reason) — помещение в карантин
-
-restore_file(file_hash) — восстановление из карантина
-
-delete_file(file_hash) — полное удаление
-
-list_quarantine() — список всех файлов в карантине
-
-_load_metadata() — загрузка метаданных
-
-_save_metadata(metadata) — сохранение метаданных
-
-_calculate_hash(file_path) — вычисление SHA256
+- quarantine_file(file_path, reason) — помещение в карантин
+- restore_file(file_hash) — восстановление из карантина
+- delete_file(file_hash) — полное удаление
+- list_quarantine() — список всех файлов в карантине
+- _load_metadata() — загрузка метаданных
+- _save_metadata(metadata) — сохранение метаданных
+- _calculate_hash(file_path) — вычисление SHA256
 
 Пример использования:
 
-python
+```python
 quarantine = QuarantineManager("/path/to/quarantine")
 success, path = quarantine.quarantine_file("/malware/file", "Обнаружен троян")
+```
+
 7.5 Sandbox (sandbox.py)
 Назначение: Безопасное выполнение подозрительных файлов.
 
 Атрибуты:
-
 timeout — таймаут выполнения (по умолчанию 15 секунд)
 
 Методы:
-
 execute_file(file_path) — выполнение файла в песочнице
 
 Возвращаемый результат:
 
-python
+```python
 {
     "success": True/False,
     "return_code": 0,
@@ -385,43 +361,42 @@ python
     "execution_time": 1.23,
     "error": "error message"
 }
+```
 Пример использования:
 
-python
+```python
 sandbox = Sandbox(timeout=10)
 result = sandbox.execute_file("/path/to/suspicious")
 if result["success"]:
     print(f"Вывод: {result['stdout']}")
-7.6 UpdateManager (updater.py)
+```
+### 7.6 UpdateManager (updater.py)
 Назначение: Обновление баз сигнатур из интернета.
 
 Атрибуты:
-
-update_url — URL для загрузки обновлений
-
-local_db_path — путь к локальной базе сигнатур
+- update_url — URL для загрузки обновлений
+- local_db_path — путь к локальной базе сигнатур
 
 Методы:
 
-update_signatures() — обновление сигнатур
-
-signatures_exist() — проверка существования базы
-
-get_signature_size() — получение размера базы
+- update_signatures() — обновление сигнатур
+- signatures_exist() — проверка существования базы
+- get_signature_size() — получение размера базы
 
 Пример использования:
 
-python
+```python
 updater = UpdateManager("https://example.com/signatures.db", "signatures.db")
 result = updater.update_signatures()
 if result["success"]:
     print("Сигнатуры обновлены")
-7.7 ConfigManager (config.py)
+```
+### 7.7 ConfigManager (config.py)
 Назначение: Управление конфигурацией приложения.
 
 Настройки по умолчанию:
 
-python
+```python
 {
     "app_name": "LinuxAV",
     "version": "1.0.0",
@@ -432,19 +407,301 @@ python
         "excluded_paths": ["/proc", "/sys", "/dev", "/run"]
     }
 }
+```
 Методы:
 
-load() — загрузка конфигурации из файла
+- load() — загрузка конфигурации из файла
+- save() — сохранение конфигурации в файл
 
-save() — сохранение конфигурации в файл
-
-7.8 Утилиты (utils.py)
+### 7.8 Утилиты (utils.py)
 Назначение: Вспомогательные функции.
 
 Функции:
 
-is_executable(file_path) — проверка, является ли файл исполняемым
+- is_executable(file_path) — проверка, является ли файл исполняемым
+- get_file_type(file_path) — определение MIME-типа файла
+- normalize_path_for_db(path) — нормализация пути для БД
 
-get_file_type(file_path) — определение MIME-типа файла
+## 8. Подробное описание интерфейса
+### 8.1 Главное окно
+Компонент: gui.py — класс MainWindow
+Содержит:
+- строку меню (Файл, Сервис, Справка);
+- панель вкладок QTabWidget (4 вкладки);
+- строку статуса QStatusBar в нижней части.
 
-normalize_path_for_db(path) — нормализация пути для БД
+### 8.2 Вкладка "Сканирование"
+Компонент: gui.py — метод setup_scan_tab()
+
+Элементы:
+- поле ввода QLineEdit для пути сканирования (по умолчанию "/home");
+- кнопка "Обзор" (QPushButton) для выбора директории;
+- кнопка "Быстрое сканирование" (QPushButton);
+- кнопка "Полное сканирование" (QPushButton);
+- кнопка "Сканировать выбранный путь" (QPushButton);
+- прогресс-бар QProgressBar;
+- метка QLabel с именем текущего файла;
+- дерево результатов QTreeWidget с колонками: "Путь к файлу", "Угроза", "Серьезность", "Дата";
+- кнопка "Поместить в карантин" (QPushButton);
+- кнопка "Игнорировать" (QPushButton);
+- кнопка "Очистить результаты" (QPushButton).
+
+Цветовая маркировка серьезности:
+- Critical — красный цвет
+- High — темно-красный цвет
+- Medium — темно-желтый цвет
+
+### 8.3 Вкладка "Карантин"
+Компонент: gui.py — метод setup_quarantine_tab()
+
+Элементы:
+кнопка "Обновить список" (QPushButton);
+
+- кнопка "Восстановить" (QPushButton);
+- кнопка "Удалить навсегда" (QPushButton);
+- дерево карантина QTreeWidget с колонками: "Хеш", "Оригинальный путь", "Причина", "Дата";
+- информационная панель QTextEdit (только для чтения).
+
+### 8.4 Вкладка "Сигнатуры"
+Компонент: gui.py — метод setup_signatures_tab()
+
+Элементы:
+- кнопка "Добавить сигнатуру" (QPushButton);
+- кнопка "Удалить сигнатуру" (QPushButton);
+- кнопка "Обновить из сети" (QPushButton);
+- группа "Статистика" с меткой QLabel;
+- дерево сигнатур QTreeWidget с колонками: "ID", "Название", "Тип", "Серьезность", "Описание".
+
+Диалог добавления сигнатуры:
+
+Поля:
+- Название (QLineEdit)
+- Тип (QComboBox): content, bytes, hash
+- Паттерн/Хеш (QLineEdit)
+- Описание (QTextEdit)
+- Серьезность (QComboBox): Low, Medium, High, Critical
+- Кнопки OK/Cancel
+
+### 8.5 Вкладка "Настройки"
+Компонент: gui.py — метод setup_settings_tab()
+
+Группа "Настройки сканирования":
+- спин-бокс QSpinBox (1-500 МБ, по умолчанию 50);
+- комбо-бокс QComboBox (Быстрое, Обычное, Глубокое).
+
+Группа "Исключения (доверенные пути)":
+- список исключений QListWidget;
+- кнопка "Добавить путь" (QPushButton);
+- кнопка "Удалить путь" (QPushButton).
+
+Исключения по умолчанию:
+
+- /usr/lib, 
+- /usr/share, 
+- /lib, /lib64, 
+- /boot, 
+- /sys, 
+- /proc, 
+- /dev
+
+Группа "Настройки кэширования":
+- чекбокс "Включить кэширование" (QCheckBox);
+- метка со статистикой кэша QLabel;
+- кнопка "Очистить кэш" (QPushButton).
+
+Кнопка "Сохранить настройки" сохраняет настройки в scanner.max_file_size, scanner.scan_depth, scanner.cache_enabled.
+
+### 8.6 Строка меню
+Меню "Файл":
+пункт "Выход" — закрывает приложение.
+Меню "Сервис":
+пункт "Обновить сигнатуры" — вызывает update_signatures().
+Меню "Справка":
+пункт "О программе" — вызывает show_about().
+
+## 9. Ограничения и особенности
+Ограничения
+
+| Параметр | Значение |
+|----------|----------|
+| Максимальный размер файла | 50 МБ (настраиваемо до 500 МБ) |
+| Максимальное количество файлов (быстрое) | 1000 |
+| Максимальное количество файлов (полное) | 10000 |
+| Таймаут песочницы | 15 секунд |
+| Глубина при быстром сканировании | 5 уровней |
+| Размер буфера чтения | 512 КБ для анализа |
+Особенности реализации
+
+- Приложение работает только на Linux
+- Для сканирования всей файловой системы требуются права root
+- ELF-анализ работает только с бинарными файлами Linux (не Windows PE)
+- Сигнатуры по умолчанию содержат только базовые шаблоны
+- Для обновления сигнатур требуется настроить URL сервера
+- Песочница изолирует только файловую систему, сетевые вызовы не перехватываются
+- Кэширование использует SHA256 хеш, но не проверяет время модификации
+
+Безопасность
+- Все операции с файлами логируются
+- Карантин использует SHA256 для уникальности
+- Белый список защищает системные файлы от ложных срабатываний
+- Песочница автоматически очищает временные файлы
+
+## 10. Планы по доработке
+Ближайшие улучшения
+- добавление реального сервера обновлений сигнатур
+- планировщик сканирования с интеграцией с cron
+- системные уведомления через libnotify
+- экспорт отчетов в PDF, JSON, HTML
+- интеграция в контекстное меню файлового менеджера (Nautilus, Dolphin)
+
+Среднесрочные планы
+- сетевая фильтрация подозрительных соединений
+- поддержка YARA правил
+- многопоточное сканирование для ускорения
+- веб-интерфейс для удаленного управления
+- интеграция с ClamAV сигнатурами
+
+Долгосрочные цели
+- поведенческий анализ через auditd
+- машинное обучение для классификации ELF-файлов
+- корпоративная версия с централизованным управлением
+- Windows версия с PE-анализом
+
+## 11. Частые проблемы и решения
+### 11.1 Ошибка "ImportError: No module named 'PySide6'"
+Причина: Отсутствует установленный пакет PySide6
+
+Решение:
+
+```bash
+pip install PySide6
+```
+или для системного Python:
+```bash
+sudo pip install PySide6
+```
+### 11.2 Ошибка "magic.open() not available"
+Причина: Отсутствует системная библиотека libmagic
+
+Решение:
+
+```bash
+# Ubuntu/Debian
+sudo apt install libmagic1 python3-magic
+```
+```bash
+# Fedora
+sudo dnf install file-libs
+```
+```bash
+# Arch Linux
+sudo pacman -S file
+```
+### 11.3 Permission denied при сканировании
+Причина: Недостаточно прав для доступа к системным файлам
+
+Решение: Запустите приложение с правами root
+```bash
+sudo python3 main.py
+```
+### 11.4 Кэш не работает или результаты не сохраняются
+Причина: Неправильные права на директорию данных
+
+Решение:
+
+```bash
+ls -la ~/.local/share/linuxav/
+sudo chown -R $USER:$USER ~/.local/share/linuxav/
+```
+### 11.5 ELF анализ не работает
+Причина: Отсутствует пакет pyelftools
+Решение:
+```bash
+pip install pyelftools
+```
+
+11.6 Обновление сигнатур не работает
+Причина: URL сервера обновлений не настроен
+Решение: В коде измените URL в вызове update_from_server() или настройте свой сервер
+
+```python
+# В gui.py, метод update_signatures()
+success, msg = self.app.signature_manager.update_from_server("https://ваш-сервер.com/signatures.json")
+```
+### 11.7 Песочница не выполняет файл
+Причина: Файл не имеет прав на исполнение
+Решение: Убедитесь, что файл имеет права на выполнение
+
+```bash
+chmod +x /path/to/file
+```
+
+## 12. Быстрый старт
+Чек-лист для первого запуска
+- Установить Python 3.8 или выше
+- Установить системные зависимости (libmagic)
+- Установить Python-пакеты: PySide6, python-magic, pyelftools, psutil, requests
+- Запустить python3 main.py (обычный пользователь)
+- Для полного сканирования: sudo python3 main.py
+- Проверить работу через EICAR-тест
+
+EICAR тест для проверки работы
+```bash
+# Создание тестового файла
+echo 'X5O!P%@AP[4\PZX54(P^)7CC)7}$EICAR-STANDARD-ANTIVIRUS-TEST-FILE!$H+H*' > /tmp/eicar.com
+
+# Запуск сканирования
+sudo python3 main.py
+
+# Выбрать быстрое сканирование
+# Убедиться, что EICAR обнаружен
+Ожидаемый результат при EICAR тесте
+
+Файл /tmp/eicar.com будет обнаружен
+Уровень серьезности: Low
+Название угрозы: "EICAR Test File"
+```
+Возможность поместить файл в карантин
+
+
+## 13. Контакты и поддержка
+GitHub: https://github.com/TamikKH/LinuxAV
+
+
+
+## 14. Итоговое резюме
+Проект реализует полноценное антивирусное решение для Linux с:
+- графическим интерфейсом на PySide6 (4 вкладки: Сканирование, Карантин, Сигнатуры, Настройки);
+- быстрым, полным и выборочным сканированием файловой системы;
+- обнаружением угроз по сигнатурам, хешам и поведенческому анализу;
+- ELF-анализом с системой оценки (RWX секции, энтропия, подозрительные символы);
+- карантином с возможностью восстановления и безвозвратного удаления;
+- песочницей для безопасного выполнения подозрительных файлов;
+- кэшированием результатов для ускорения повторных сканирований;
+- белым списком доверенных файлов и директорий;
+- сканированием оперативной памяти на активные угрозы;
+- обновлением сигнатур через HTTP.
+
+Основная логика построена на прямом взаимодействии с файловой системой Linux, 
+SQLite базами данных и системным API через psutil и os. 
+Приложение готово к использованию в домашних и офисных Linux-средах, 
+легко расширяется и может служить основой для корпоративного антивирусного решения.
+
+## 15. Заключение
+LinuxAV представляет собой законченное, работоспособное антивирусное решение
+с открытым исходным кодом. Оно может быть использовано как для защиты
+персональных Linux-систем, так и в качестве основы для более сложных корпоративных продуктов.
+
+Ключевые преимущества:
+- Бесплатное и открытое программное обеспечение
+- Простой и интуитивно понятный интерфейс
+- Поддержка основных типов угроз для Linux
+- Возможность расширения через добавление сигнатур
+- Интеграция с системными механизмами Linux
+
+Рекомендации по использованию:
+- Регулярно обновляйте сигнатуры
+- Запускайте полное сканирование не реже одного раза в месяц
+- Используйте быстрые сканирования для ежедневной проверки
+- Настройте исключения для доверенных директорий
+- Включайте кэширование для ускорения работы
