@@ -18,9 +18,6 @@ class BinaryAnalyzer:
             "ptrace", "strace", "ltrace", "gdb"
         }
 
-    # =========================
-    # MAIN PIPELINE
-    # =========================
     def analyze(self, file_path, file_data=None):
         try:
             f = open(file_path, "rb") if not file_data else None
@@ -56,9 +53,6 @@ class BinaryAnalyzer:
                 "threat_level": "Unknown"
             }
 
-    # =========================
-    # FEATURE EXTRACTION
-    # =========================
     def _extract_features(self, elf):
         features = {
             "symbols": set(),

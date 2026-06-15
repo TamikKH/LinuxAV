@@ -64,42 +64,31 @@ class MainWindow(QMainWindow):
         self.setup_ui()
 
     def setup_ui(self):
-        # Создаем центральный виджет
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
 
-        # Главный layout
         main_layout = QVBoxLayout(central_widget)
-
-        # Создаем меню
         self.create_menu()
-
-        # Создаем вкладки
         self.tab_widget = QTabWidget()
 
-        # Вкладка сканирования
         self.scan_tab = QWidget()
         self.setup_scan_tab()
         self.tab_widget.addTab(self.scan_tab, "🔍 Сканирование")
 
-        # Вкладка карантина
         self.quarantine_tab = QWidget()
         self.setup_quarantine_tab()
         self.tab_widget.addTab(self.quarantine_tab, "🛡️ Карантин")
 
-        # Вкладка сигнатур
         self.signatures_tab = QWidget()
         self.setup_signatures_tab()
         self.tab_widget.addTab(self.signatures_tab, "📋 Сигнатуры")
 
-        # Вкладка настроек
         self.settings_tab = QWidget()
         self.setup_settings_tab()
         self.tab_widget.addTab(self.settings_tab, "⚙️ Настройки")
 
         main_layout.addWidget(self.tab_widget)
 
-        # Статус бар
         self.status_bar = QStatusBar()
         self.setStatusBar(self.status_bar)
         self.status_bar.showMessage("Готов к сканированию")
@@ -301,11 +290,11 @@ class MainWindow(QMainWindow):
 
         exceptions_buttons = QHBoxLayout()
 
-        self.add_exception_btn = QPushButton("Добавить путь")
+        self.add_exception_btn = QPushButton("➕ Добавить путь")
         self.add_exception_btn.clicked.connect(self.add_exception_path)
         exceptions_buttons.addWidget(self.add_exception_btn)
 
-        self.remove_exception_btn = QPushButton("Удалить путь")
+        self.remove_exception_btn = QPushButton("➖ Удалить путь")
         self.remove_exception_btn.clicked.connect(self.remove_exception_path)
         exceptions_buttons.addWidget(self.remove_exception_btn)
 
@@ -313,12 +302,47 @@ class MainWindow(QMainWindow):
         exceptions_group.setLayout(exceptions_layout)
         layout.addWidget(exceptions_group)
 
-        # Кнопка сохранения
+        # Настройки кэширования
+        cache_group = QGroupBox("Настройки кэширования")
+        cache_layout = QVBoxLayout()
+
+        self.enable_cache_checkbox = QCheckBox("✅ Включить кэширование результатов сканирования")
+        self.enable_cache_checkbox.setChecked(True)
+        cache_layout.addWidget(self.enable_cache_checkbox)
+
+        # Информация о кэше
+        self.cache_info_label = QLabel("📊 Загрузка информации о кэше...")
+        self.cache_info_label.setWordWrap(True)
+        self.cache_info_label.setStyleSheet("color: blue; font-size: 9pt; padding: 5px;")
+        cache_layout.addWidget(self.cache_info_label)
+
+        cache_info = QLabel(
+            "ℹ️ Кэширование ускоряет повторные сканирования, сохраняя результаты проверки файлов.\n"
+            "Рекомендуется оставить включенным для быстрого сканирования."
+        )
+        cache_info.setWordWrap(True)
+        cache_info.setStyleSheet("color: gray; font-size: 10pt;")
+        cache_layout.addWidget(cache_info)
+
+        clear_cache_btn = QPushButton("🗑️ Очистить кэш")
+        clear_cache_btn.clicked.connect(self.clear_scan_cache)
+        clear_cache_btn.setStyleSheet("QPushButton { color: orange; }")
+        cache_layout.addWidget(clear_cache_btn)
+
+        cache_group.setLayout(cache_layout)
+        layout.addWidget(cache_group)
+
+        # Кнопка сохранения настроек
         self.save_settings_btn = QPushButton("💾 Сохранить настройки")
         self.save_settings_btn.clicked.connect(self.save_settings)
+        self.save_settings_btn.setStyleSheet(
+            "QPushButton { background-color: #4CAF50; color: white; font-weight: bold; padding: 8px; }")
         layout.addWidget(self.save_settings_btn)
 
         layout.addStretch()
+
+        # Обновляем информацию о кэше при загрузке
+        self.refresh_cache_info()
 
     def browse_path(self):
         path = QFileDialog.getExistingDirectory(self, "Выберите директорию для сканирования")
@@ -333,11 +357,9 @@ class MainWindow(QMainWindow):
         else:  # full
             path = "/"
 
-        # Очищаем предыдущие результаты
         self.results_tree.clear()
         self.progress_bar.setValue(0)
 
-        # Запускаем поток сканирования
         self.scan_thread = ScanThread(self.app.scanner, path, scan_type)
         self.scan_thread.progress.connect(self.update_scan_progress)
         self.scan_thread.result.connect(self.show_scan_results)
@@ -450,6 +472,105 @@ class MainWindow(QMainWindow):
             self.quarantine_list.addTopLevelItem(item)
 
         self.quarantine_info.setText(f"Всего в карантине: {len(metadata)} файлов")
+
+    def refresh_cache_info(self):
+        """Обновление информации о кэше"""
+        try:
+            import sqlite3
+            from config import get_user_data_dir
+            from pathlib import Path
+
+            cache_db = get_user_data_dir() / "cache.db"
+            if cache_db.exists():
+                conn = sqlite3.connect(str(cache_db))
+                cursor = conn.cursor()
+
+                # Получаем статистику кэша
+                cursor.execute("SELECT COUNT(*) FROM scan_cache")
+                total = cursor.fetchone()[0]
+
+                cursor.execute(
+                    "SELECT COUNT(*) FROM scan_cache WHERE threat_level != 'Clean' AND threat_level IS NOT NULL")
+                threats = cursor.fetchone()[0]
+
+                cursor.execute(
+                    "SELECT datetime(last_scan, 'localtime') FROM scan_cache ORDER BY last_scan DESC LIMIT 1")
+                last = cursor.fetchone()
+                last_scan = last[0] if last and last[0] else "Нет данных"
+
+                conn.close()
+
+                self.cache_info_label.setText(
+                    f"📊 Статистика кэша:\n"
+                    f"   • Всего записей: {total}\n"
+                    f"   • Угроз в кэше: {threats}\n"
+                    f"   • Последнее сканирование: {last_scan}"
+                )
+            else:
+                self.cache_info_label.setText("📊 Кэш пуст (еще не создан)")
+        except Exception as e:
+            self.cache_info_label.setText(f"❌ Ошибка загрузки статистики: {str(e)[:50]}")
+
+    def clear_scan_cache(self):
+        """Очистка кэша сканирования"""
+        reply = QMessageBox.question(
+            self,
+            "Подтверждение",
+            "🧹 Очистить кэш результатов сканирования?\n\n"
+            "Это может замедлить следующее сканирование,\n"
+            "но не влияет на безопасность и не удаляет файлы.",
+            QMessageBox.Yes | QMessageBox.No
+        )
+
+        if reply == QMessageBox.Yes:
+            try:
+                import sqlite3
+                from config import get_user_data_dir
+                from pathlib import Path
+
+                cache_db = get_user_data_dir() / "cache.db"
+                if cache_db.exists():
+                    conn = sqlite3.connect(str(cache_db))
+                    cursor = conn.cursor()
+                    cursor.execute("DELETE FROM scan_cache")
+                    deleted_count = cursor.rowcount
+                    conn.commit()
+                    conn.close()
+
+                    QMessageBox.information(
+                        self,
+                        "Успех",
+                        f"✅ Кэш успешно очищен!\n\nУдалено записей: {deleted_count}"
+                    )
+                    self.refresh_cache_info()  # Обновляем статистику
+                else:
+                    QMessageBox.information(self, "Информация", "📭 Кэш пуст, очистка не требуется")
+            except Exception as e:
+                QMessageBox.critical(
+                    self,
+                    "Ошибка",
+                    f"❌ Не удалось очистить кэш:\n\n{str(e)}"
+                )
+
+    def save_settings(self):
+        """Сохранение настроек"""
+        # Сохраняем настройки сканирования
+        self.app.scanner.max_file_size = self.max_file_size.value() * 1024 * 1024
+        self.app.scanner.scan_depth = self.scan_depth.currentIndex()
+        self.app.scanner.cache_enabled = self.enable_cache_checkbox.isChecked()
+
+        # Сохраняем исключения (доверенные пути)
+        exceptions = [self.exceptions_list.item(i).text() for i in range(self.exceptions_list.count())]
+
+        QMessageBox.information(
+            self,
+            "Успех",
+            "✅ Настройки успешно сохранены!\n\n"
+            f"• Максимальный размер файла: {self.max_file_size.value()} МБ\n"
+            f"• Глубина сканирования: {self.scan_depth.currentText()}\n"
+            f"• Кэширование: {'включено' if self.enable_cache_checkbox.isChecked() else 'выключено'}\n"
+            f"• Исключений в списке: {len(exceptions)}"
+        )
 
     def restore_from_quarantine(self):
         selected = self.quarantine_list.selectedItems()
@@ -640,6 +761,7 @@ class MainWindow(QMainWindow):
         # Сохраняем настройки
         self.app.scanner.max_file_size = self.max_file_size.value() * 1024 * 1024
         self.app.scanner.scan_depth = self.scan_depth.currentIndex()
+        self.app.scanner.cache_enabled = self.enable_cache_checkbox.isChecked()
 
         # Сохраняем исключения
         exceptions = [self.exceptions_list.item(i).text() for i in range(self.exceptions_list.count())]

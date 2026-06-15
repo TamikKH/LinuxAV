@@ -4,12 +4,16 @@ import time
 from datetime import datetime
 import psutil
 
+from sandbox import Sandbox
+from binary_analyzer import BinaryAnalyzer
 
 class LinuxAVScanner:
     def __init__(self, signature_manager):
         self.signature_manager = signature_manager
         self.max_file_size = 50 * 1024 * 1024  # 50 MB
         self.scan_depth = 0  # 0=quick, 1=normal, 2=deep
+        self.cache_enabled = True
+        self.binary_analyzer = BinaryAnalyzer()
 
         self.scan_results = {
             "total_scanned": 0,
@@ -60,6 +64,10 @@ class LinuxAVScanner:
         self.executable_extensions = {
             "", ".sh", ".py", ".pl", ".so", ".run", ".bin"
         }
+
+    def _is_elf_file(self, data):
+        """Проверка является ли файл ELF"""
+        return len(data) >= 4 and data[:4] == b'\x7fELF'
 
     def _is_trusted_system_file(self, file_path):
         """Проверка, является ли файл доверенным системным"""
@@ -235,8 +243,29 @@ class LinuxAVScanner:
 
             file_hash = self._calculate_hash(file_path)
 
+            if self.cache_enabled:
+                cached_threat = self.signature_manager.get_cached_result(file_path, file_hash)
+                if cached_threat:
+                    # Восстанавливаем угрозу из кэша
+                    if cached_threat != "Clean":
+                        self.scan_results["threats_found"] += 1
+                        self.scan_results["threats"].append({
+                            "path": file_path,
+                            "name": cached_threat,
+                            "type": "Cached",
+                            "severity": "Medium",
+                            "description": "Результат из кэша предыдущего сканирования",
+                            "date": datetime.now().strftime("%d.%m.%Y %H:%M"),
+                            "hash": file_hash
+                        })
+                    self.scan_results["total_scanned"] += 1
+                    return  # Пропускаем повторный анализ
+
             # Белый список (доверенные файлы)
             if self.signature_manager.is_whitelisted(file_path):
+                if self.cache_enabled:
+                    self.signature_manager.update_cache(file_path, file_hash, "Whitelisted")
+
                 return
 
             threat = self.signature_manager.check_hash(file_hash)
@@ -266,6 +295,14 @@ class LinuxAVScanner:
                 if not threat and self.scan_depth >= 1:  # Глубокий анализ
                     threat = self._deep_analyze_linux_file(file_path, data)
 
+            if self.cache_enabled:
+                threat_level = "Clean"
+                threat_name = None
+                if threat:
+                    threat_level = threat.get("severity", "Unknown")
+                    threat_name = threat.get("name")
+                self.signature_manager.update_cache(file_path, file_hash, threat_level, threat_name)
+
             if threat:
                 self.scan_results["threats_found"] += 1
                 self.scan_results["threats"].append({
@@ -292,6 +329,19 @@ class LinuxAVScanner:
             return h.hexdigest()
         except:
             return ""
+
+    def _execute_in_sandbox(self, file_path):
+        sandbox = Sandbox(timeout=15)
+        result = sandbox.execute_file(file_path)
+
+        if result.get("success"):
+            if "xmrig" in result.get("stdout", "").lower():
+                return {
+                    "name": "Криптомайнер",
+                    "type": "Miner",
+                    "severity": "High"
+                }
+        return None
 
     def _deep_analyze_linux_file(self, path, data):
         """Углубленный анализ Linux файлов"""
@@ -347,6 +397,16 @@ class LinuxAVScanner:
                 "severity": "High",
                 "description": "; ".join(indicators)
             }
+
+        if path.endswith(('.elf', '')) and self._is_elf_file(data):
+            result = self.binary_analyzer.analyze(path)
+            if result['score'] > 50:
+                return {
+                    "name": "Подозрительный ELF файл",
+                    "type": "Trojan",
+                    "severity": result['threat_level'],
+                    "description": f"Обнаружены подозрительные признаки. Score: {result['score']}"
+                }
 
         return None
 
